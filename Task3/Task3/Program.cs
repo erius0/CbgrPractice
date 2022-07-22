@@ -1,13 +1,36 @@
 ﻿using Task3;
+using Mono.Options;
 
-if (args.Length > 0)
+string? path = null;
+int memoryLimit = WordCounter.DEFAULT_MEMORY_LIMIT;
+bool doParallel = false, showHelp = false;
+var options = new OptionSet()
 {
-    string path = args[0];
-    bool doParallel = args.Length > 1 && args[1] == "-p";
+    { "f|file=", "the {FILE} to use as input", v => path = v },
+    { "m|memory=", "the max amount of {MEMORY} used while reading data", v =>
+        {
+            bool success = int.TryParse(v, out int memory);
+            if (success) memoryLimit = memory;
+        }
+    },
+    { "p", "count words using multiple threads", v => doParallel = v != null },
+    { "h", "show help", v => showHelp = v != null }
+};
+options.Parse(args);
+
+if (showHelp)
+{
+    ShowHelp(options);
+    return;
+}
+
+WordCounter wordCounter = new WordCounter(memoryLimit);
+long result = 0;
+if (path != null)
+{
     try
     {
-        WordCounter wordCounter = new WordCounter(path);
-        wordCounter.ProcessText(doParallel: doParallel);
+        result = wordCounter.ProcessFileInput(path, doParallel: doParallel);
     }
     catch (FileNotFoundException ex)
     {
@@ -18,9 +41,14 @@ if (args.Length > 0)
         Console.WriteLine(ex.Message);
     }
 }
-else
-{
-    WordCounter wordCounter = new WordCounter();
-    wordCounter.ProcessTextConsole();
-}
+else result = wordCounter.ProcessConsoleInput(doParallel: doParallel);
+Console.WriteLine(result);
 
+static void ShowHelp(OptionSet options)
+{
+    Console.WriteLine("Usage: ./Task3.exe [OPTIONS]+ message");
+    Console.WriteLine("Counts amount of words in the specified input.");
+    Console.WriteLine();
+    Console.WriteLine("Options:");
+    options.WriteOptionDescriptions(Console.Out);
+}

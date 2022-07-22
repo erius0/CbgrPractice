@@ -8,17 +8,12 @@ namespace Task3
 {
     public class WordCounter
     {
-        protected const int DEFAULT_MEMORY_LIMIT = 1_048_576; // 1 Mb
+        public const int DEFAULT_MEMORY_LIMIT = 1_048_576; // 1 Mb
 
         /// <summary>
         /// Memory limit for reading data in bytes, set to 1_048_576 bytes
         /// </summary>
         public int MemoryLimit { get; set; }
-
-        /// <summary>
-        /// StreamReader for line by line data input, used by the TextProcessor to read data
-        /// </summary>
-        public StreamReader? Input { get; set; }
 
         /// <summary>
         /// StreamWriter for line by line data output, used by the TextProcessor to write data
@@ -33,10 +28,10 @@ namespace Task3
         /// <summary>
         /// Creates an instance of WordCounter with the specified memory limit for reading data, input and output streams
         /// </summary>
+        /// <param name="output">StreamWriter outputting the result</param>
         /// <param name="memoryLimit">Memory limit for reading data in bytes, set to 1_048_576 by default</param>
-        public WordCounter(StreamReader input, StreamWriter output, int memoryLimit = DEFAULT_MEMORY_LIMIT)
+        public WordCounter(StreamWriter output, int memoryLimit = DEFAULT_MEMORY_LIMIT)
         {
-            Input = input;
             Output = output;
             MemoryLimit = memoryLimit;
         }
@@ -44,51 +39,8 @@ namespace Task3
         /// <summary>
         /// Creates an instance of WordCounter with the specified memory limit for reading data and an input stream. Sets console as an output
         /// </summary>
-        /// <param name="input">StreamWriter supplying data to the WordCounter</param>
         /// <param name="memoryLimit">Memory limit for reading data in bytes, set to 1_048_576 by default</param>
-        public WordCounter(StreamReader input, int memoryLimit = DEFAULT_MEMORY_LIMIT)
-        {
-            Input = input;
-            Output = new StreamWriter(Console.OpenStandardOutput());
-            MemoryLimit = memoryLimit;
-        }
-
-        /// <summary>
-        /// Creates an instance of WordCounter with the specified memory limit for reading data, an input and an output from specified files
-        /// </summary>
-        /// <param name="inputFile">Name of the file used for input</param>
-        /// <param name="outputFile">Name of the file used for output</param>
-        /// <param name="memoryLimit">Memory limit for reading data in bytes, set to 1_048_576 by default</param>
-        public WordCounter(string inputFile, string outputFile, int memoryLimit = DEFAULT_MEMORY_LIMIT)
-        {
-            SetFileInput(inputFile);
-            SetFileOutput(outputFile);
-            MemoryLimit = memoryLimit;
-        }
-
-        /// <summary>
-        /// Creates an instance of WordCounter with the specified memory limit for reading data and an input from specified file. Sets console as an output
-        /// </summary>
-        /// <param name="inputFile">Name of the file used for input</param>
-        /// <param name="memoryLimit">Memory limit for reading data in bytes, set to 1_048_576 by default</param>
-        public WordCounter(string inputFile, int memoryLimit = DEFAULT_MEMORY_LIMIT)
-        {
-            SetFileInput(inputFile);
-            Output = new StreamWriter(Console.OpenStandardOutput());
-            MemoryLimit = memoryLimit;
-        }
-
-        /// <summary>
-        /// Creates an instance of WordCounter with the specified memory limit for reading data.
-        /// Input is set to null, should be specified somewhere later in code before calling the processing methods.
-        /// Sets console as an output
-        /// </summary>
-        /// <param name="memoryLimit">Memory limit for reading data in bytes, set to 1_048_576 by default</param>
-        public WordCounter(int memoryLimit = DEFAULT_MEMORY_LIMIT)
-        {
-            Output = new StreamWriter(Console.OpenStandardOutput());
-            MemoryLimit = memoryLimit;
-        }
+        public WordCounter(int memoryLimit = DEFAULT_MEMORY_LIMIT) : this(new StreamWriter(Console.OpenStandardOutput()), memoryLimit) { }
 
         // simple write to output line by line
         protected void WriteData(string result)
@@ -151,27 +103,57 @@ namespace Task3
         /// <param name="doWrite">If true, writes the result to specified Output, true by default</param>
         /// <param name="doParallel">If true, processes data in parallel by partitioning the blocks of data. Recommended to use with a memory limit of at least 100 Kb, true by default</param>
         /// <returns>The result of data processing</returns>
-        public long ProcessText(bool doWrite = true, bool doParallel = true)
+        public long ProcessText(StreamReader input, bool doWrite = true, bool doParallel = true)
         {
-            if (Input == null) throw new ArgumentNullException("No input was found");
             Func<char[], char, int, long> countingFunc = doParallel ? CountWordsParallel : CountWordsNonParallel; // determine the processing function to use (no if statememnt on every read)
             char prevChar = ' ';
             char[] currentBlock = new char[MemoryLimit]; // init buffer for the data
-            int charsRead = Input.ReadBlock(currentBlock, 0, MemoryLimit); // first read
+            int charsRead = input.ReadBlock(currentBlock, 0, MemoryLimit); // first read
             long wordsAmount = 0;
             // while there are chars being read, continue reading
             while (charsRead > 0)
             {
                 wordsAmount += countingFunc(currentBlock, prevChar, charsRead); // process data
                 prevChar = currentBlock[^1]; // set the prev char to the last char of the current block
-                charsRead = Input.ReadBlock(currentBlock, 0, MemoryLimit); // read data
+                charsRead = input.ReadBlock(currentBlock, 0, MemoryLimit); // read data
             }
             string result = wordsAmount.ToString();
             if (doWrite) WriteData(result); // write data to output if needed
             // release resources
-            Input.Dispose();
-            Output.Dispose();
+            input.Dispose();
             return wordsAmount;
+        }
+
+        /// <summary>
+        /// Starts the WordCounter. Reads and processes data, then writes (if doWrite is true) and returns it
+        /// </summary>
+        /// <param name="data">A string to process</param>
+        /// <param name="doWrite">If true, writes the result to specified Output, true by default</param>
+        /// <param name="doParallel">If true, processes data in parallel by partitioning the blocks of data. Recommended to use with a memory limit of at least 100 Kb, true by default</param>
+        /// <returns></returns>
+        public long ProcessString(string data, bool doWrite = false, bool doParallel = false)
+        {
+            long wordsAmount;
+            if (doParallel) wordsAmount = CountWordsParallel(data.ToCharArray(), ' ', data.Length);
+            else wordsAmount = CountWordsNonParallel(data.ToCharArray(), ' ', data.Length);
+            string result = wordsAmount.ToString();
+            if (doWrite) WriteData(result); // write data to output if needed
+            // release resources
+            return wordsAmount;
+        }
+
+        /// <summary>
+        /// Starts the WordCounter using file as input. Reads and processes data, then writes (if doWrite is true) and returns it
+        /// </summary>
+        /// <param name="filePath">Name of the file used for input</param>
+        /// <exception cref="FileNotFoundException">If the file doesn't exist</exception>
+        /// <exception cref="ArgumentException">If the specified file is a directory</exception>
+        public long ProcessFileInput(string filePath, bool doWrite = true, bool doParallel = true)
+        {
+            FileInfo fileInfo = FindFile(filePath);
+            FileStream fileStream = fileInfo.OpenRead();
+            StreamReader fileReader = new StreamReader(fileStream, TextEncoding);
+            return ProcessText(fileReader, doWrite, doParallel);
         }
 
         private static FileInfo FindFile(string filePath)
@@ -183,36 +165,12 @@ namespace Task3
         }
 
         /// <summary>
-        /// Sets a file as a WordCounter input
-        /// </summary>
-        /// <param name="filePath">Name of the file used for input</param>
-        public void SetFileInput(string filePath)
-        {
-            FileInfo fileInfo = FindFile(filePath);
-            FileStream fileStream = fileInfo.OpenRead();
-            StreamReader reader = new StreamReader(fileStream, TextEncoding);
-            Input = reader;
-        }
-
-        /// <summary>
-        /// Sets a file as a WordCounter output
-        /// </summary>
-        /// <param name="filePath">Name of the file used for output</param>
-        public void SetFileOutput(string filePath)
-        {
-            FileInfo fileInfo = FindFile(filePath);
-            FileStream fileStream = fileInfo.OpenWrite();
-            StreamWriter writer = new StreamWriter(fileStream, TextEncoding);
-            Output = writer;
-        }
-
-        /// <summary>
         /// Starts the WordCounter using console as input. Reads and processes data, then writes (if doWrite is true) and returns it
         /// </summary>
         /// <param name="doWrite">If true, writes the result to specified Output, true by default</param>
         /// <param name="doParallel">If true, processes data in parallel by partitioning the blocks of data. Recommended to use with a memory limit of at least 100 Kb, false by default</param>
         /// <returns>The result of data processing</returns>
-        public long ProcessTextConsole(bool doWrite = true, bool doParallel = false)
+        public long ProcessConsoleInput(bool doWrite = true, bool doParallel = false)
         {
             Console.WriteLine($"Подсчёт слов в тексте, нажмите Ctrl-Z для окончания ввода");
             string? line;
@@ -226,35 +184,20 @@ namespace Task3
             }
             sw.Flush();
             stream.Position = 0;
-            Input = new StreamReader(stream);
-            return ProcessText(doWrite, doParallel);
+            StreamReader console = new StreamReader(stream);
+            return ProcessText(console, doWrite, doParallel);
         }
 
         /// <summary>
-        /// Starts the WordCounter using string value as input. Reads and processes data, then writes (if doWrite is true) and returns it
+        /// Sets a file as a WordCounter output
         /// </summary>
-        /// <param name="data">If true, writes the result to specified Output, true by default</param>
-        /// <param name="doWrite">If true, writes the result to specified Output, false by default</param>
-        /// <param name="doParallel">If true, processes data in parallel by partitioning the blocks of data. Recommended to use with a memory limit of at least 100 Kb, false by default</param>
-        /// <returns>The result of data processing</returns>
-        public long ProcessString(string data, bool doWrite = false, bool doParallel = false)
+        /// <param name="filePath">Name of the file used for output</param>
+        public void SetFileOutput(string filePath)
         {
-            SetStringInput(data);
-            return ProcessText(doWrite, doParallel);
-        }
-
-        /// <summary>
-        /// Sets a string value as a WordCounter input
-        /// </summary>
-        /// <param name="data">A string value</param>
-        public void SetStringInput(string data)
-        {
-            MemoryStream stream = new MemoryStream();
-            StreamWriter sw = new StreamWriter(stream);
-            sw.Write(data);
-            sw.Flush();
-            stream.Position = 0;
-            Input = new StreamReader(stream);
+            FileInfo fileInfo = FindFile(filePath);
+            FileStream fileStream = fileInfo.OpenWrite();
+            StreamWriter writer = new StreamWriter(fileStream, TextEncoding);
+            Output = writer;
         }
 
         /// <summary>
