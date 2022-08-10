@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EFTask
+namespace EFTask.Data
 {
     [Table("players")]
     public class FootballPlayer

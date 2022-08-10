@@ -1,5 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using EFTask.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,39 +15,31 @@ namespace EFTask
         public DbSet<FootballPlayer> Players { get; set; } = null!;
         public DbSet<FootballTeam> Teams { get; set; } = null!;
         public DbSet<FootbalContract> Contracts { get; set; } = null!;
+        public IDatabase RedisCache { get; protected set; } = null!;
 
         public FootballContext()
         {
-            Console.WriteLine("Connecting to database...");
+            Console.WriteLine("Ensuring that the database exists...");
             Database.EnsureCreated();
-            Console.WriteLine("Connection established");
-            Console.WriteLine();
+            Console.WriteLine("Success");
+            Console.Clear();
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            string connectionString = GetConnectionString();
-            optionsBuilder.UseNpgsql(connectionString);
-        }
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            
-        }
-
-        private static string GetConnectionString()
-        {
+            Console.WriteLine("Connecting to database...");
             var builder = new ConfigurationBuilder();
             var config = builder.SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json")
                 .Build();
-            var dbConnectionSettings = config.GetSection("databaseConnectionSettings");
-            string host = dbConnectionSettings["host"],
-                port = dbConnectionSettings["port"],
-                db = dbConnectionSettings["database"],
-                user = dbConnectionSettings["username"],
-                password = dbConnectionSettings["password"];
-            return $"Host={host};Port={port};Database={db};Username={user};Password={password};";
+            var psqlConnection = config.GetConnectionString("Postgres");
+            optionsBuilder.UseNpgsql(psqlConnection);
+            Console.WriteLine("Connection established");
+
+            Console.WriteLine("Connecting to redis...");
+            var redisConnection = config.GetConnectionString("Redis");
+            RedisCache = ConnectionMultiplexer.Connect(redisConnection).GetDatabase();
+            Console.WriteLine("Connection established");
         }
     }
 }

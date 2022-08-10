@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using EFTask.Data;
 using Microsoft.EntityFrameworkCore;
 using Sharprompt;
 
@@ -166,7 +167,7 @@ namespace EFTask
 
         protected void ShowContracts(FootballContext fc)
         {
-            var contracts = fc.Contracts.ToHashSet<FootbalContract?>();
+            var contracts = fc.Contracts.Include(c => c.Player).Include(c => c.Team).ToHashSet<FootbalContract?>();
             contracts.Add(null);
             while (true)
             {
@@ -181,7 +182,7 @@ namespace EFTask
                                     + $"\tAge: {contractToDescribe.Player.Age}\n"
                                     + $"Team:\n"
                                     + $"\tId: {contractToDescribe.TeamId}\n"
-                                    + $"\tNAme: {contractToDescribe.Team.Name}\n"
+                                    + $"\tName: {contractToDescribe.Team.Name}\n"
                                     + $"Salary: {contractToDescribe.Salary} $/year\n\n"
                                     + "Press any key to go back...");
                 Console.ReadKey();
@@ -200,7 +201,7 @@ namespace EFTask
             }
             var player = Prompt.Select("Select the contract's player", fc.Players, 10,
                 textSelector: p => $"{p.Id}. {p.Name}, {p.Age}");
-            var availableTeams = fc.Teams.Except(player.Contracts.Select(p => p.Team));
+            var availableTeams = fc.Teams.ToHashSet().Except(player.Contracts.Select(p => p.Team));
             if (availableTeams.Count() == 0)
             {
                 Console.WriteLine("No available teams were found, insert a new team to make a contract with this player");
@@ -258,7 +259,15 @@ namespace EFTask
 
         protected void PlayersTeamAmount(FootballContext fc)
         {
-            throw new NotImplementedException();
+            Console.WriteLine("Calculating amount of players in a team...");
+            var team = Prompt.Select("Select a team", fc.Teams, 10,
+                textSelector: t => $"{t.Id}. {t.Name}");
+            var cachedValue = fc.RedisCache.StringGet(team.Id.ToString());
+            if (cachedValue != StackExchange.Redis.RedisValue.Null)
+            {
+                var result = cachedValue.ToString();
+                Console.WriteLine($"There are {result} players in team {team.Name}");
+            }
         }
 
         protected void PlayersTotalAmount(FootballContext fc)
