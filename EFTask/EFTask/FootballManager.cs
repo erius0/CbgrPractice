@@ -63,8 +63,8 @@ namespace EFTask
             while (true)
             {
                 var playerToDescribe = Prompt.Select("Select a player for additional information", players, 10,
-                    textSelector: p => p == null ? "Back" : $"{p.Id}. {p.Name}, {p.Age}");
-                if (playerToDescribe == null) return;
+                    textSelector: p => p is null ? "Back" : $"{p.Id}. {p.Name}, {p.Age}");
+                if (playerToDescribe is null) return;
                 Console.WriteLine("\nFootball player\n\n"
                                     + $"Id: {playerToDescribe.Id}\n"
                                     + $"Name: {playerToDescribe.Name}\n"
@@ -93,8 +93,8 @@ namespace EFTask
             var players = fc.Players.ToHashSet<FootballPlayer?>();
             players.Add(null);
             var player = Prompt.Select("Select a player to update", players, 10,
-                textSelector: p => p == null ? "Back" : $"{p.Id}. {p.Name}, {p.Age}");
-            if (player == null) return;
+                textSelector: p => p is null ? "Back" : $"{p.Id}. {p.Name}, {p.Age}");
+            if (player is null) return;
             player.Name = Prompt.Input<string>("Enter the player's new name", player.Name);
             player.Age = Prompt.Input<int>("Enter the player's new age", player.Age);
             fc.SaveChanges();
@@ -119,8 +119,8 @@ namespace EFTask
             while (true)
             {
                 var teamToDescribe = Prompt.Select("Select a team for additional information", teams, 10,
-                    textSelector: t => t == null ? "Back" : $"{t.Id}. {t.Name}");
-                if (teamToDescribe == null) return;
+                    textSelector: t => t is null ? "Back" : $"{t.Id}. {t.Name}");
+                if (teamToDescribe is null) return;
                 Console.WriteLine("\nFootball team\n\n"
                                     + $"Id: {teamToDescribe.Id}\n"
                                     + $"Name: {teamToDescribe.Name}\n"
@@ -147,8 +147,8 @@ namespace EFTask
             var teams = fc.Teams.ToHashSet<FootballTeam?>();
             teams.Add(null);
             var team = Prompt.Select("Select a team to update", teams, 10,
-                textSelector: t => t == null ? "Back" : $"{t.Id}. {t.Name}");
-            if (team == null) return;
+                textSelector: t => t is null ? "Back" : $"{t.Id}. {t.Name}");
+            if (team is null) return;
             team.Name = Prompt.Input<string>("Enter the team's new name", team.Name);
             fc.SaveChanges();
             Console.WriteLine($"Successfully updated a team with an id {team.Id}");
@@ -172,8 +172,8 @@ namespace EFTask
             while (true)
             {
                 var contractToDescribe = Prompt.Select("Select a team for additional information", contracts, 10,
-                    textSelector: c => c == null ? "Back" : $"{c.Id}. {c.Player.Name} - {c.Team.Name}");
-                if (contractToDescribe == null) return;
+                    textSelector: c => c is null ? "Back" : $"{c.Id}. {c.Player.Name} - {c.Team.Name}");
+                if (contractToDescribe is null) return;
                 Console.WriteLine("\nFootball contract\n\n"
                                     + $"Id: {contractToDescribe.Id}\n"
                                     + $"Player:\n"
@@ -193,7 +193,7 @@ namespace EFTask
         protected void InsertContract(FootballContext fc)
         {
             Console.WriteLine("Inserting a new football contract...");
-            if (fc.Players.Count() == 0)
+            if (!fc.Players.Any())
             {
                 Console.WriteLine("No players were found, insert a new player to make a contract");
                 Console.WriteLine("Cancelling operation...");
@@ -223,21 +223,21 @@ namespace EFTask
             var contracts = fc.Contracts.ToHashSet<FootbalContract?>();
             contracts.Add(null);
             var contract = Prompt.Select("Select a contract to update", contracts, 10,
-                textSelector: c => c == null ? "Back" : $"{c.Id}. {c.Player.Name} - {c.Team.Name}");
-            if (contract == null) return;
+                textSelector: c => c is null ? "Back" : $"{c.Id}. {c.Player.Name} - {c.Team.Name}");
+            if (contract is null) return;
 
             var players = fc.Players.Where(p => p.Id != contract.PlayerId).ToHashSet<FootballPlayer?>();
             players.Add(null);
             var player = Prompt.Select("Select a new player", players, 10,
                 textSelector: p => p == null ? "Do not change" : $"{p.Id}. {p.Name}, {p.Age}");
-            if (player != null)
+            if (player is not null)
                 contract.Player = player;
 
             var teams = fc.Teams.Where(t => t.Id != contract.TeamId).ToHashSet<FootballTeam?>();
             teams.Add(null);
             var team = Prompt.Select("Select a new team", teams, 10,
                 textSelector: t => t == null ? "Do not change" : $"{t.Id}. {t.Name}");
-            if (team != null)
+            if (team is not null)
                 contract.Team = team;
 
             var salary = Prompt.Input<decimal>("Input the player's salary", contract.Salary, contract.Salary.ToString());
