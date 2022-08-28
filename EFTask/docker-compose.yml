@@ -1,0 +1,7 @@
+version: '3.4'
+
+name: EFTask
+services:
+  psql:
+    build: .
+    image: postgres:latest

@@ -84,6 +84,7 @@ namespace EFTask
             var player = new FootballPlayer() { Name = name, Age = age };
             fc.Players.Add(player);
             fc.SaveChanges();
+            fc.RedisCache.StringSet("total_players", fc.Players.Count());
             Console.WriteLine($"Successfully inserted a new player with an id {player.Id}");
         }
 
@@ -109,6 +110,7 @@ namespace EFTask
             foreach (var player in playersToDelete)
                 fc.Players.Remove(player);
             fc.SaveChanges();
+            fc.RedisCache.StringSet("total_players", fc.Players.Count());
             Console.WriteLine($"Successfully deleted {playersToDelete.Count()} players");
         }
 
@@ -138,6 +140,7 @@ namespace EFTask
             var team = new FootballTeam() { Name = name };
             fc.Teams.Add(team);
             fc.SaveChanges();
+            fc.RedisCache.StringSet("overall_expenses", fc.Contracts.Sum(c => c.Salary).ToString());
             Console.WriteLine($"Successfully inserted a new team with an id {team.Id}");
         }
 
@@ -162,6 +165,7 @@ namespace EFTask
             foreach (var team in teamsToDelete)
                 fc.Teams.Remove(team);
             fc.SaveChanges();
+            fc.RedisCache.StringSet("overall_expenses", fc.Contracts.Sum(c => c.Salary).ToString());
             Console.WriteLine($"Successfully deleted {teamsToDelete.Count()} teams");
         }
 
@@ -214,6 +218,7 @@ namespace EFTask
             var contract = new FootbalContract() { Player = player, Team = team, Salary = salary };
             fc.Contracts.Add(contract);
             fc.SaveChanges();
+            fc.RedisCache.StringSet("overall_expenses", fc.Contracts.Sum(c => c.Salary).ToString());
             Console.WriteLine($"Successfully inserted a new contract with an id {contract.Id}");
         }
 
@@ -243,6 +248,7 @@ namespace EFTask
             var salary = Prompt.Input<decimal>("Input the player's salary", contract.Salary, contract.Salary.ToString());
             contract.Salary = salary;
             fc.SaveChanges();
+            fc.RedisCache.StringSet("overall_expenses", fc.Contracts.Sum(c => c.Salary).ToString());
             Console.WriteLine($"Successfully updated a contract with an id {contract.Id}");
         }
 
@@ -254,6 +260,7 @@ namespace EFTask
             foreach (var contract in contractsToDelete)
                 fc.Contracts.Remove(contract);
             fc.SaveChanges();
+            fc.RedisCache.StringSet("overall_expenses", fc.Contracts.Sum(c => c.Salary).ToString());
             Console.WriteLine($"Successfully deleted {contractsToDelete.Count()} contracts");
         }
 
@@ -262,27 +269,43 @@ namespace EFTask
             Console.WriteLine("Calculating amount of players in a team...");
             var team = Prompt.Select("Select a team", fc.Teams, 10,
                 textSelector: t => $"{t.Id}. {t.Name}");
-            var cachedValue = fc.RedisCache.StringGet(team.Id.ToString());
-            if (cachedValue != StackExchange.Redis.RedisValue.Null)
-            {
-                var result = cachedValue.ToString();
-                Console.WriteLine($"There are {result} players in team {team.Name}");
-            }
+            var playersAmount = team.Contracts.Count();
+            Console.WriteLine($"There are {playersAmount} players in team {team.Name}");
         }
 
         protected void PlayersTotalAmount(FootballContext fc)
         {
-            throw new NotImplementedException();
+            var cachedValue = fc.RedisCache.StringGet("total_players");
+            string playersAmount;
+            if (cachedValue.IsNull)
+            {
+                playersAmount = fc.Players.Count().ToString();
+                fc.RedisCache.StringSet("total_players", playersAmount);
+            }
+            else playersAmount = cachedValue.ToString();
+            Console.WriteLine($"There are {playersAmount} players in total");
         }
 
         protected void TeamExpenses(FootballContext fc)
         {
-            throw new NotImplementedException();
+            Console.WriteLine("Calculating expenses of a team...");
+            var team = Prompt.Select("Select a team", fc.Teams, 10,
+                textSelector: t => $"{t.Id}. {t.Name}");
+            var expenses = team.Contracts.Sum(c => c.Salary);
+            Console.WriteLine($"Expenses of team {team.Name} are {expenses} $/year");
         }
 
         protected void OverallExpenses(FootballContext fc)
         {
-            throw new NotImplementedException();
+            var cachedValue = fc.RedisCache.StringGet("overall_expenses");
+            string expenses;
+            if (cachedValue.IsNull)
+            {
+                expenses = fc.Contracts.Sum(c => c.Salary).ToString();
+                fc.RedisCache.StringSet("overall_expenses", expenses);
+            }
+            else expenses = cachedValue.ToString();
+            Console.WriteLine($"Overall expenses are {expenses} $/year");
         }
 
         protected void Quit(FootballContext _)

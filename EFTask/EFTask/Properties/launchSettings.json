@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "EFTask": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}
