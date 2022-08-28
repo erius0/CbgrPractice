@@ -1,7 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
-using System.Text;
 
 namespace WebAPIEventsTask.Controllers
 {
@@ -11,41 +8,26 @@ namespace WebAPIEventsTask.Controllers
     {
         private readonly ILogger<EventController> _logger;
         private readonly IConfiguration _configuration;
-        private static IModel rmqChannel;
-        private static readonly string QUEUE_NAME = "test-queue";
+        private readonly IMessageService _messageService;
 
-        static EventController()
-        {
-            var connectionFactory = new ConnectionFactory { HostName = "localhost" };
-            var connection = connectionFactory.CreateConnection();
-            rmqChannel = connection.CreateModel();
-        }
-
-        public EventController(ILogger<EventController> logger, IConfiguration configuration)
+        public EventController(ILogger<EventController> logger, IConfiguration configuration, IMessageService messageService)
         {
             _logger = logger;
             _configuration = configuration;
-            rmqChannel.QueueDeclare(QUEUE_NAME, false, false, false);
+            _messageService = messageService;
         }
 
         [HttpPost("send")]
         public IActionResult SendMessage(string msg)
         {
-            rmqChannel.BasicPublish("", QUEUE_NAME, null, Encoding.UTF8.GetBytes(msg));
+            _messageService.SendMessage(msg);
             return Ok();
         }
 
         [HttpGet("receive")]
         public IActionResult ReceiveMessage()
         {
-            var consumer = new EventingBasicConsumer(rmqChannel);
-            string? msg = null;
-            consumer.Received += (model, ea) =>
-            {
-                var body = ea.Body.ToArray();
-                msg = Encoding.UTF8.GetString(body);
-            };
-            rmqChannel.BasicConsume(QUEUE_NAME, true, consumer);
+            string? msg = _messageService.ReceiveMessage();
             return msg == null ? NotFound() : Ok(msg);
         }
     }

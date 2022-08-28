@@ -1,0 +1,14 @@
+version: '3.4'
+
+services:
+  webapieventstask:
+    container_name: webapi
+    image: ${DOCKER_REGISTRY-}webapieventstask
+    build:
+      context: .
+      dockerfile: WebAPIEventsTask/Dockerfile
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq
+    ports:
+      - 5672:5672
