@@ -1,0 +1,82 @@
+version: '3.4'
+
+services:
+  postgres:
+    container_name: postgres-mobile
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+
+  rabbitmq:
+    container_name: rabbitmq-push
+    image: rabbitmq
+    ports:
+      - 15672:15672
+
+  mobileapi:
+    container_name: mobile-api
+    image: ${DOCKER_REGISTRY-}mobileapi
+    build:
+      context: .
+      dockerfile: MobileAPI/Dockerfile
+    environment:
+      - ASPNETCORE_URLS=https://+:443;http://+:80
+      - ASPNETCORE_HTTPS_PORT=443
+    depends_on:
+      - postgres
+    ports:
+      - 8701:80
+      - 8702:443
+
+  pushapi:
+    container_name: push-api
+    image: ${DOCKER_REGISTRY-}pushapi
+    build:
+      context: .
+      dockerfile: PushAPI/Dockerfile
+    environment:
+      - ASPNETCORE_URLS=https://+:443;http://+:80
+      - ASPNETCORE_HTTPS_PORT=443
+    depends_on:
+      - postgres
+      - rabbitmq
+    ports:
+      - 8703:80
+      - 8704:443
+
+  pushsender:
+    container_name: push-sender
+    image: ${DOCKER_REGISTRY-}pushsender
+    build:
+      context: .
+      dockerfile: PushSender/Dockerfile
+    depends_on:
+      - rabbitmq
+
+  statswebsite:
+    container_name: stats-website
+    image: ${DOCKER_REGISTRY-}statswebsite
+    build:
+       context: stats-website
+       dockerfile: Dockerfile
+    depends_on:
+      - statsapi
+    ports:
+      - 3000:3000
+
+  statsapi:
+    container_name: stats-api
+    image: ${DOCKER_REGISTRY-}statsapi
+    build:
+      context: .
+      dockerfile: StatsAPI/Dockerfile
+    environment:
+      - ASPNETCORE_URLS=https://+:443;http://+:80
+      - ASPNETCORE_HTTPS_PORT=443
+    depends_on:
+      - postgres
+    ports:
+      - 8705:80
+      - 8706:443

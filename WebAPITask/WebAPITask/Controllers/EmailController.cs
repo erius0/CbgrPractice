@@ -85,7 +85,8 @@ namespace WebAPITask.Controllers
             [Required]
             public string Message { get; set; }
         }
-        public record EmailStatResponseModel
+
+        public class EmailStatResponseModel
         {
             [Required, EmailAddress]
             public string Email { get; set; }
